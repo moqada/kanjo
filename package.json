@@ -1,0 +1,47 @@
+{
+  "name": "kanjo",
+  "description": "Summarize AWS Billing",
+  "version": "0.0.0",
+  "author": "moqada <moqada@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/moqada/kanjo/issues"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.2.2",
+    "babel-runtime": "^5.8.24",
+    "fast-csv": "^0.6.0"
+  },
+  "devDependencies": {
+    "babel": "^5.8.23",
+    "babel-eslint": "^4.0.10",
+    "babel-plugin-espower": "^1.0.0",
+    "coveralls": "^2.11.4",
+    "eslint": "^1.4.3",
+    "eslint-config-moqada": "^4.0.1",
+    "isparta": "^3.0.4",
+    "mocha": "^2.3.2",
+    "power-assert": "^1.0.1"
+  },
+  "files": [
+    "lib"
+  ],
+  "homepage": "https://github.com/moqada/kanjo#readme",
+  "keywords": [
+    "aws",
+    "billing"
+  ],
+  "license": "MIT",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moqada/kanjo.git"
+  },
+  "scripts": {
+    "build": "rm -r lib && babel --out-dir=lib src",
+    "coveralls": "cat coverage/lcov.info | coveralls",
+    "eslint": "eslint src test",
+    "test": "npm run eslint && babel-node $(npm bin)/isparta cover --report text --report html --report lcovonly $(npm bin)/_mocha -- --require test/hook test/*spec.js",
+    "testing": "mocha --require test/hook --watch test/*spec.js",
+    "watch": "babel --out-dir=lib --watch src"
+  }
+}
