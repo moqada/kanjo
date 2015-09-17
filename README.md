@@ -55,6 +55,11 @@ kanjo.fetch(2015, 9).then(report => {
 ```
 
 
+## Related
+
+- [kanjo-cli](https://github.com/moqada/kanjo-cli) - CLI for this module
+
+
 ## Todo
 
 - [ ] Add tests
