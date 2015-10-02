@@ -34,7 +34,7 @@
   "main": "lib/index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/moqada/kanjo.git"
+    "url": "https://github.com/moqada/kanjo.git"
   },
   "scripts": {
     "build": "rm -r lib && babel --out-dir=lib src",
