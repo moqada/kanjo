@@ -1,6 +1,8 @@
 import AWS from 'aws-sdk';
 import csv from 'fast-csv';
 
+const PADDING_BASE_NUM = 10;
+
 
 /**
  * Record
@@ -125,7 +127,7 @@ class Report {
  * @return {string}
  */
 function pad(number) {
-  if (number < 10) {
+  if (number < PADDING_BASE_NUM) {
     return `0${number}`;
   }
   return number.toString();
