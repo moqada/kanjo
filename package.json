@@ -7,8 +7,8 @@
     "url": "https://github.com/moqada/kanjo/issues"
   },
   "dependencies": {
-    "aws-sdk": "^2.2.2",
-    "babel-runtime": "^6.0.12",
+    "aws-sdk": "^2.2.17",
+    "babel-runtime": "^5",
     "fast-csv": "^0.6.0"
   },
   "devDependencies": {
