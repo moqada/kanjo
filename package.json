@@ -21,7 +21,7 @@
     "babel-preset-es2015": "^6.1.18",
     "coveralls": "^2.11.4",
     "eslint": "^1.4.3",
-    "eslint-config-moqada": "^8.0.1",
+    "eslint-config-moqada": "^9.0.0",
     "isparta": "^4.0.0",
     "mocha": "^2.3.2",
     "power-assert": "^1.0.1"
