@@ -19,7 +19,7 @@
     "babel-plugin-espower": "^2.0.0",
     "babel-plugin-transform-runtime": "^6.1.18",
     "babel-preset-es2015": "^6.1.18",
-    "coveralls": "^2.11.4",
+    "codecov.io": "^0.1.6",
     "eslint": "^1.4.3",
     "eslint-config-moqada": "^8.0.1",
     "isparta": "^4.0.0",
@@ -42,7 +42,7 @@
   },
   "scripts": {
     "build": "rm -r lib && babel --out-dir=lib src",
-    "coveralls": "cat coverage/lcov.info | coveralls",
+    "codecov": "cat coverage/lcov.info | codecov",
     "eslint": "eslint src test",
     "test": "npm run eslint && babel-node $(npm bin)/isparta cover --report text --report html --report lcovonly $(npm bin)/_mocha -- --require test/hook test/*spec.js",
     "testing": "mocha --require test/hook --watch test/*spec.js",
