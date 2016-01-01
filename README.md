@@ -3,7 +3,7 @@
 [![NPM version][npm-image]][npm-url]
 [![NPM downloads][npm-download-image]][npm-download-url]
 [![Build Status][travis-image]][travis-url]
-[![Coverage Status][coveralls-image]][coveralls-url]
+[![Coverage Status][codecov-image]][codecov-url]
 [![Dependency Status][daviddm-image]][daviddm-url]
 [![DevDependency Status][daviddm-dev-image]][daviddm-dev-url]
 [![License][license-image]][license-url]
@@ -71,11 +71,11 @@ kanjo.fetch(2015, 9).then(report => {
 [npm-url]: https://www.npmjs.com/package/kanjo
 [npm-image]: https://img.shields.io/npm/v/kanjo.svg?style=flat-square
 [npm-download-url]: https://www.npmjs.com/package/kanjo
-[npm-download-image]: https://img.shields.io/npm/dm/kanjo.svg?style=flat-square
+[npm-download-image]: https://img.shields.io/npm/dt/kanjo.svg?style=flat-square
 [travis-url]: https://travis-ci.org/moqada/kanjo
 [travis-image]: https://img.shields.io/travis/moqada/kanjo.svg?style=flat-square
-[coveralls-url]: https://coveralls.io/github/moqada/kanjo
-[coveralls-image]: https://img.shields.io/coveralls/moqada/kanjo.svg?style=flat-square
+[codecov-url]: https://codecov.io/github/moqada/kanjo
+[codecov-image]: https://img.shields.io/codecov/c/github/moqada/kanjo.svg?style=flat-square
 [daviddm-url]: https://david-dm.org/moqada/kanjo
 [daviddm-image]: https://img.shields.io/david/moqada/kanjo.svg?style=flat-square
 [daviddm-dev-url]: https://david-dm.org/moqada/kanjo#info=devDependencies
