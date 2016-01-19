@@ -145,11 +145,15 @@ export default class Kanjo {
    * @param {string} account account id
    * @param {string} bucket bucket name
    * @param {string|undefined} region region
+   * @param {string|undefined} accessKeyId AWS Access key ID
+   * @param {string|undefined} secretAccessKey AWS Secret Access key
    */
-  constructor({account, bucket, region}) {
+  constructor({account, bucket, region, accessKeyId, secretAccessKey}) {
     this.account = account;
     this.bucket = bucket;
     this.region = region;
+    this.accessKeyId = accessKeyId;
+    this.secretAccessKey = secretAccessKey;
   }
 
   /**
@@ -160,7 +164,14 @@ export default class Kanjo {
    * @return {Promise}
    */
   fetch(year, month) {
-    const s3 = new AWS.S3({region: this.region});
+    const opts = {region: this.region};
+    if (this.accessKeyId) {
+      opts.accessKeyId = this.accessKeyId;
+    }
+    if (this.secretAccessKey) {
+      opts.secretAccessKey = this.secretAccessKey;
+    }
+    const s3 = new AWS.S3(opts);
     const key = `${this.account}-aws-billing-csv-${year}-${pad(month)}.csv`;
     return new Promise((resolve, reject) => {
       s3.getObject({
