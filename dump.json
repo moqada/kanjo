@@ -1,0 +1,1530 @@
+[
+  {
+    "__docId__": 0,
+    "kind": "file",
+    "static": true,
+    "variation": null,
+    "name": "src/index.js",
+    "memberof": null,
+    "longname": "src/index.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": "import AWS from 'aws-sdk';\nimport csv from 'fast-csv';\n\nconst PADDING_BASE_NUM = 10;\n\n\n/**\n * Record\n */\nclass Record {\n\n  /**\n   * constructor\n   *\n   * @param {Object} row row of CSV\n   */\n  constructor(row) {\n    this.isPayer = !row.LinkedAccountId;\n    this.productCode = row.ProductCode;\n    this.totalCost = Number.parseFloat(row.TotalCost);\n    this.isTotal = Array.includes(['AccountTotal', 'StatementTotal'], row.RecordType);\n    this.isService = Array.includes(['PayerLineItem', 'LinkedLineItem'], row.RecordType);\n    this.accountId = row.LinkedAccountId || row.PayerAccountId;\n    this.accountName = row.LinkedAccountName || row.PayerAccountName;\n  }\n}\n\n\n/**\n * Bill\n */\nclass Bill {\n\n  /**\n   * constructor\n   *\n   * @param {Record} record initial data\n   */\n  constructor(record) {\n    this.accountId = record.accountId;\n    this.accountName = record.accountName;\n    this.isPayer = record.isPayer;\n    this.totalCost = 0;\n    this.products = {};\n  }\n\n  get sortedProducts() {\n    return Object.keys(this.products).map(code => {\n      return {\n        code,\n        shortCode: code.replace(/aws|amazon/i, ''),\n        cost: this.products[code]\n      };\n    }).sort((a, b) => b.cost - a.cost);\n  }\n\n  /**\n   * update\n   *\n   * @param {Record} record update self\n   */\n  update(record) {\n    if (record.isTotal) {\n      this.totalCost = record.totalCost;\n    } else if (record.isService) {\n      const code = record.productCode;\n      if (this.products[code] === undefined) {\n        this.products[code] = 0;\n      }\n      this.products[code] += record.totalCost;\n    }\n  }\n}\n\n\n/**\n * Report\n */\nclass Report {\n\n  /**\n   * constructor\n   */\n  constructor() {\n    this.bills = {};\n  }\n\n  /**\n   * Billing of total\n   *\n   * @return {Bill}\n   */\n  get total() {\n    return this.bills.total;\n  }\n\n  /**\n   * accounts\n   *\n   * @return {Bill[]}\n   */\n  get accounts() {\n    return Object.keys(this.bills).filter(k => k !== 'total').map(k => {\n      return this.bills[k];\n    }).sort((a, b) => b.totalCost - a.totalCost);\n  }\n\n  /**\n   * update\n   *\n   * @param {Record} record update self\n   */\n  update(record) {\n    const id = record.isPayer ? 'total' : record.accountId;\n    if (!this.bills[id]) {\n      this.bills[id] = new Bill(record);\n    }\n    this.bills[id].update(record);\n  }\n}\n\n\n/**\n * zero padding\n *\n * @param {number} number target number\n * @return {string}\n */\nfunction pad(number) {\n  if (number < PADDING_BASE_NUM) {\n    return `0${number}`;\n  }\n  return number.toString();\n}\n\n\n/**\n * Kanjo\n */\nexport default class Kanjo {\n\n  /**\n   * constructor\n   *\n   * @param {string} account account id\n   * @param {string} bucket bucket name\n   * @param {string|undefined} region region\n   * @param {string|undefined} accessKeyId AWS Access key ID\n   * @param {string|undefined} secretAccessKey AWS Secret Access key\n   */\n  constructor({account, bucket, region, accessKeyId, secretAccessKey}) {\n    this.account = account;\n    this.bucket = bucket;\n    this.region = region;\n    this.accessKeyId = accessKeyId;\n    this.secretAccessKey = secretAccessKey;\n  }\n\n  /**\n   * fetch billing data\n   *\n   * @param {number} year target year\n   * @param {number} month target month\n   * @return {Promise}\n   */\n  fetch(year, month) {\n    const opts = {region: this.region};\n    if (this.accessKeyId) {\n      opts.accessKeyId = this.accessKeyId;\n    }\n    if (this.secretAccessKey) {\n      opts.secretAccessKey = this.secretAccessKey;\n    }\n    const s3 = new AWS.S3(opts);\n    const key = `${this.account}-aws-billing-csv-${year}-${pad(month)}.csv`;\n    return new Promise((resolve, reject) => {\n      s3.getObject({\n        Bucket: this.bucket,\n        Key: key\n      }, (err, data) => {\n        if (err) {\n          reject(err);\n        } else {\n          const report = new Report();\n          csv.fromString(data.Body.toString('utf8'), {headers: true})\n            .on('data', row => {\n              report.update(new Record(row));\n            })\n            .on('end', () => resolve(report))\n            .on('error', _err => reject(_err));\n        }\n      });\n    });\n  }\n}\n"
+  },
+  {
+    "__docId__": 1,
+    "kind": "variable",
+    "static": true,
+    "variation": null,
+    "name": "PADDING_BASE_NUM",
+    "memberof": "src/index.js",
+    "longname": "src/index.js~PADDING_BASE_NUM",
+    "access": null,
+    "export": false,
+    "importPath": "kanjo/src/index.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 4,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 2,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "Record",
+    "memberof": "src/index.js",
+    "longname": "src/index.js~Record",
+    "access": null,
+    "export": false,
+    "importPath": "kanjo/src/index.js",
+    "importStyle": null,
+    "description": "Record",
+    "lineNumber": 10,
+    "interface": false
+  },
+  {
+    "__docId__": 3,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#constructor",
+    "access": null,
+    "description": "constructor",
+    "lineNumber": 17,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Object"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "row",
+        "description": "row of CSV"
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 4,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "isPayer",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#isPayer",
+    "access": null,
+    "description": null,
+    "lineNumber": 18,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 5,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "productCode",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#productCode",
+    "access": null,
+    "description": null,
+    "lineNumber": 19,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 6,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "totalCost",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#totalCost",
+    "access": null,
+    "description": null,
+    "lineNumber": 20,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 7,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "isTotal",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#isTotal",
+    "access": null,
+    "description": null,
+    "lineNumber": 21,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 8,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "isService",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#isService",
+    "access": null,
+    "description": null,
+    "lineNumber": 22,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 9,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "accountId",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#accountId",
+    "access": null,
+    "description": null,
+    "lineNumber": 23,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 10,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "accountName",
+    "memberof": "src/index.js~Record",
+    "longname": "src/index.js~Record#accountName",
+    "access": null,
+    "description": null,
+    "lineNumber": 24,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 11,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "Bill",
+    "memberof": "src/index.js",
+    "longname": "src/index.js~Bill",
+    "access": null,
+    "export": false,
+    "importPath": "kanjo/src/index.js",
+    "importStyle": null,
+    "description": "Bill",
+    "lineNumber": 32,
+    "interface": false
+  },
+  {
+    "__docId__": 12,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#constructor",
+    "access": null,
+    "description": "constructor",
+    "lineNumber": 39,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Record"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "record",
+        "description": "initial data"
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 13,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "accountId",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#accountId",
+    "access": null,
+    "description": null,
+    "lineNumber": 40,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 14,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "accountName",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#accountName",
+    "access": null,
+    "description": null,
+    "lineNumber": 41,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 15,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "isPayer",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#isPayer",
+    "access": null,
+    "description": null,
+    "lineNumber": 42,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 16,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "totalCost",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#totalCost",
+    "access": null,
+    "description": null,
+    "lineNumber": 43,
+    "undocument": true,
+    "type": {
+      "types": [
+        "number"
+      ]
+    }
+  },
+  {
+    "__docId__": 17,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "products",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#products",
+    "access": null,
+    "description": null,
+    "lineNumber": 44,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 18,
+    "kind": "get",
+    "static": false,
+    "variation": null,
+    "name": "sortedProducts",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#sortedProducts",
+    "access": null,
+    "description": null,
+    "lineNumber": 47,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 19,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "update",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#update",
+    "access": null,
+    "description": "update",
+    "lineNumber": 62,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Record"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "record",
+        "description": "update self"
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 20,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "totalCost",
+    "memberof": "src/index.js~Bill",
+    "longname": "src/index.js~Bill#totalCost",
+    "access": null,
+    "description": null,
+    "lineNumber": 64,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 21,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "Report",
+    "memberof": "src/index.js",
+    "longname": "src/index.js~Report",
+    "access": null,
+    "export": false,
+    "importPath": "kanjo/src/index.js",
+    "importStyle": null,
+    "description": "Report",
+    "lineNumber": 79,
+    "interface": false
+  },
+  {
+    "__docId__": 22,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "src/index.js~Report",
+    "longname": "src/index.js~Report#constructor",
+    "access": null,
+    "description": "constructor",
+    "lineNumber": 84,
+    "params": [],
+    "generator": false
+  },
+  {
+    "__docId__": 23,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "bills",
+    "memberof": "src/index.js~Report",
+    "longname": "src/index.js~Report#bills",
+    "access": null,
+    "description": null,
+    "lineNumber": 85,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 24,
+    "kind": "get",
+    "static": false,
+    "variation": null,
+    "name": "total",
+    "memberof": "src/index.js~Report",
+    "longname": "src/index.js~Report#total",
+    "access": null,
+    "description": "Billing of total",
+    "lineNumber": 93,
+    "return": {
+      "nullable": null,
+      "types": [
+        "Bill"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 25,
+    "kind": "get",
+    "static": false,
+    "variation": null,
+    "name": "accounts",
+    "memberof": "src/index.js~Report",
+    "longname": "src/index.js~Report#accounts",
+    "access": null,
+    "description": "accounts",
+    "lineNumber": 102,
+    "return": {
+      "nullable": null,
+      "types": [
+        "Bill[]"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 26,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "update",
+    "memberof": "src/index.js~Report",
+    "longname": "src/index.js~Report#update",
+    "access": null,
+    "description": "update",
+    "lineNumber": 113,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "Record"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "record",
+        "description": "update self"
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 27,
+    "kind": "function",
+    "static": true,
+    "variation": null,
+    "name": "pad",
+    "memberof": "src/index.js",
+    "longname": "src/index.js~pad",
+    "access": null,
+    "export": false,
+    "importPath": "kanjo/src/index.js",
+    "importStyle": null,
+    "description": "zero padding",
+    "lineNumber": 129,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "number"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "number",
+        "description": "target number"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "string"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 28,
+    "kind": "class",
+    "static": true,
+    "variation": null,
+    "name": "Kanjo",
+    "memberof": "src/index.js",
+    "longname": "src/index.js~Kanjo",
+    "access": null,
+    "export": true,
+    "importPath": "kanjo/src/index.js",
+    "importStyle": "Kanjo",
+    "description": "Kanjo",
+    "lineNumber": 140,
+    "interface": false
+  },
+  {
+    "__docId__": 29,
+    "kind": "constructor",
+    "static": false,
+    "variation": null,
+    "name": "constructor",
+    "memberof": "src/index.js~Kanjo",
+    "longname": "src/index.js~Kanjo#constructor",
+    "access": null,
+    "description": "constructor",
+    "lineNumber": 151,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "account",
+        "description": "account id"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "string"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "bucket",
+        "description": "bucket name"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "string",
+          "undefined"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "region",
+        "description": "region"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "string",
+          "undefined"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "accessKeyId",
+        "description": "AWS Access key ID"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "string",
+          "undefined"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "secretAccessKey",
+        "description": "AWS Secret Access key"
+      }
+    ],
+    "generator": false
+  },
+  {
+    "__docId__": 30,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "account",
+    "memberof": "src/index.js~Kanjo",
+    "longname": "src/index.js~Kanjo#account",
+    "access": null,
+    "description": null,
+    "lineNumber": 152,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 31,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "bucket",
+    "memberof": "src/index.js~Kanjo",
+    "longname": "src/index.js~Kanjo#bucket",
+    "access": null,
+    "description": null,
+    "lineNumber": 153,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 32,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "region",
+    "memberof": "src/index.js~Kanjo",
+    "longname": "src/index.js~Kanjo#region",
+    "access": null,
+    "description": null,
+    "lineNumber": 154,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 33,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "accessKeyId",
+    "memberof": "src/index.js~Kanjo",
+    "longname": "src/index.js~Kanjo#accessKeyId",
+    "access": null,
+    "description": null,
+    "lineNumber": 155,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 34,
+    "kind": "member",
+    "static": false,
+    "variation": null,
+    "name": "secretAccessKey",
+    "memberof": "src/index.js~Kanjo",
+    "longname": "src/index.js~Kanjo#secretAccessKey",
+    "access": null,
+    "description": null,
+    "lineNumber": 156,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    }
+  },
+  {
+    "__docId__": 35,
+    "kind": "method",
+    "static": false,
+    "variation": null,
+    "name": "fetch",
+    "memberof": "src/index.js~Kanjo",
+    "longname": "src/index.js~Kanjo#fetch",
+    "access": null,
+    "description": "fetch billing data",
+    "lineNumber": 166,
+    "params": [
+      {
+        "nullable": null,
+        "types": [
+          "number"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "year",
+        "description": "target year"
+      },
+      {
+        "nullable": null,
+        "types": [
+          "number"
+        ],
+        "spread": false,
+        "optional": false,
+        "name": "month",
+        "description": "target month"
+      }
+    ],
+    "return": {
+      "nullable": null,
+      "types": [
+        "Promise"
+      ],
+      "spread": false,
+      "description": ""
+    },
+    "generator": false
+  },
+  {
+    "__docId__": 37,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Infinity",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Infinity",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 38,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "NaN",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~NaN",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 39,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "undefined",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~undefined",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 40,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "null",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~null",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 41,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Object",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 42,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "object",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~object",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 43,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Function",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 44,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "function",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~function",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 45,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Boolean",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 46,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "boolean",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~boolean",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 47,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Symbol",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Symbol",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 48,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Error",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Error",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 49,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "EvalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~EvalError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 50,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "InternalError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~InternalError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 51,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "RangeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RangeError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 52,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "ReferenceError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ReferenceError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 53,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "SyntaxError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~SyntaxError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 54,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "TypeError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~TypeError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 55,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "URIError",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~URIError",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 56,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Number",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 57,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "number",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~number",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 58,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Date",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Date",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 59,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "String",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~String",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 60,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "string",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~string",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 61,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "RegExp",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~RegExp",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 62,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 63,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int8Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 64,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint8Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 65,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint8ClampedArray",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint8ClampedArray",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 66,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int16Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 67,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint16Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint16Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 68,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Int32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Int32Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 69,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Uint32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Uint32Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 70,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Float32Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float32Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 71,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Float64Array",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Float64Array",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 72,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Map",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Map",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 73,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Set",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Set",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 74,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "WeakMap",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakMap",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 75,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "WeakSet",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~WeakSet",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 76,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "ArrayBuffer",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~ArrayBuffer",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 77,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "DataView",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~DataView",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 78,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "JSON",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~JSON",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 79,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Promise",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Promise",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 80,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Generator",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Generator",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 81,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "GeneratorFunction",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~GeneratorFunction",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 82,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Reflect",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Reflect",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 83,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Proxy",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
+    "memberof": "BuiltinExternal/ECMAScriptExternal.js",
+    "longname": "BuiltinExternal/ECMAScriptExternal.js~Proxy",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 85,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "CanvasRenderingContext2D",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~CanvasRenderingContext2D",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 86,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "DocumentFragment",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~DocumentFragment",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 87,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Element",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Element",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Element",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 88,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Event",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Event",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Event",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 89,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "Node",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Node",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~Node",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 90,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "NodeList",
+    "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/NodeList",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~NodeList",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 91,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "XMLHttpRequest",
+    "externalLink": "https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequest",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~XMLHttpRequest",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 92,
+    "kind": "external",
+    "static": true,
+    "variation": null,
+    "name": "AudioContext",
+    "externalLink": "https://developer.mozilla.org/en/docs/Web/API/AudioContext",
+    "memberof": "BuiltinExternal/WebAPIExternal.js",
+    "longname": "BuiltinExternal/WebAPIExternal.js~AudioContext",
+    "access": null,
+    "description": null,
+    "builtinExternal": true
+  },
+  {
+    "__docId__": 93,
+    "kind": "testFile",
+    "static": true,
+    "variation": null,
+    "name": "test/index-spec.js",
+    "memberof": null,
+    "longname": "test/index-spec.js",
+    "access": null,
+    "description": null,
+    "lineNumber": 1,
+    "content": "import assert from 'power-assert';\n\nimport Kanjo from '../src';\n\n\ndescribe('Kanjo', () => {\n  it('is defined', () => {\n    assert(Kanjo.name === 'Kanjo');\n  });\n});\n"
+  },
+  {
+    "__docId__": 94,
+    "kind": "testDescribe",
+    "static": true,
+    "variation": null,
+    "name": "describe0",
+    "testId": 0,
+    "memberof": "test/index-spec.js",
+    "testDepth": 0,
+    "longname": "test/index-spec.js~describe0",
+    "access": null,
+    "description": "Kanjo",
+    "lineNumber": 6
+  },
+  {
+    "__docId__": 95,
+    "kind": "testIt",
+    "static": true,
+    "variation": null,
+    "name": "it1",
+    "testId": 1,
+    "memberof": "test/index-spec.js~describe0",
+    "testDepth": 1,
+    "longname": "test/index-spec.js~describe0.it1",
+    "access": null,
+    "description": "is defined",
+    "lineNumber": 7
+  }
+]

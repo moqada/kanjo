@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">src/index.js | API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  <a href="test.html" data-ice="testLink">Test</a>
+  <a data-ice="repoURL" href="https://github.com/moqada/kanjo.git" class="repo-url-github">Repository</a>
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/index.js~Kanjo.html">Kanjo</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/index.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import AWS from &apos;aws-sdk&apos;;
+import csv from &apos;fast-csv&apos;;
+
+const PADDING_BASE_NUM = 10;
+
+
+/**
+ * Record
+ */
+class Record {
+
+  /**
+   * constructor
+   *
+   * @param {Object} row row of CSV
+   */
+  constructor(row) {
+    this.isPayer = !row.LinkedAccountId;
+    this.productCode = row.ProductCode;
+    this.totalCost = Number.parseFloat(row.TotalCost);
+    this.isTotal = Array.includes([&apos;AccountTotal&apos;, &apos;StatementTotal&apos;], row.RecordType);
+    this.isService = Array.includes([&apos;PayerLineItem&apos;, &apos;LinkedLineItem&apos;], row.RecordType);
+    this.accountId = row.LinkedAccountId || row.PayerAccountId;
+    this.accountName = row.LinkedAccountName || row.PayerAccountName;
+  }
+}
+
+
+/**
+ * Bill
+ */
+class Bill {
+
+  /**
+   * constructor
+   *
+   * @param {Record} record initial data
+   */
+  constructor(record) {
+    this.accountId = record.accountId;
+    this.accountName = record.accountName;
+    this.isPayer = record.isPayer;
+    this.totalCost = 0;
+    this.products = {};
+  }
+
+  get sortedProducts() {
+    return Object.keys(this.products).map(code =&gt; {
+      return {
+        code,
+        shortCode: code.replace(/aws|amazon/i, &apos;&apos;),
+        cost: this.products[code]
+      };
+    }).sort((a, b) =&gt; b.cost - a.cost);
+  }
+
+  /**
+   * update
+   *
+   * @param {Record} record update self
+   */
+  update(record) {
+    if (record.isTotal) {
+      this.totalCost = record.totalCost;
+    } else if (record.isService) {
+      const code = record.productCode;
+      if (this.products[code] === undefined) {
+        this.products[code] = 0;
+      }
+      this.products[code] += record.totalCost;
+    }
+  }
+}
+
+
+/**
+ * Report
+ */
+class Report {
+
+  /**
+   * constructor
+   */
+  constructor() {
+    this.bills = {};
+  }
+
+  /**
+   * Billing of total
+   *
+   * @return {Bill}
+   */
+  get total() {
+    return this.bills.total;
+  }
+
+  /**
+   * accounts
+   *
+   * @return {Bill[]}
+   */
+  get accounts() {
+    return Object.keys(this.bills).filter(k =&gt; k !== &apos;total&apos;).map(k =&gt; {
+      return this.bills[k];
+    }).sort((a, b) =&gt; b.totalCost - a.totalCost);
+  }
+
+  /**
+   * update
+   *
+   * @param {Record} record update self
+   */
+  update(record) {
+    const id = record.isPayer ? &apos;total&apos; : record.accountId;
+    if (!this.bills[id]) {
+      this.bills[id] = new Bill(record);
+    }
+    this.bills[id].update(record);
+  }
+}
+
+
+/**
+ * zero padding
+ *
+ * @param {number} number target number
+ * @return {string}
+ */
+function pad(number) {
+  if (number &lt; PADDING_BASE_NUM) {
+    return `0${number}`;
+  }
+  return number.toString();
+}
+
+
+/**
+ * Kanjo
+ */
+export default class Kanjo {
+
+  /**
+   * constructor
+   *
+   * @param {string} account account id
+   * @param {string} bucket bucket name
+   * @param {string|undefined} region region
+   * @param {string|undefined} accessKeyId AWS Access key ID
+   * @param {string|undefined} secretAccessKey AWS Secret Access key
+   */
+  constructor({account, bucket, region, accessKeyId, secretAccessKey}) {
+    this.account = account;
+    this.bucket = bucket;
+    this.region = region;
+    this.accessKeyId = accessKeyId;
+    this.secretAccessKey = secretAccessKey;
+  }
+
+  /**
+   * fetch billing data
+   *
+   * @param {number} year target year
+   * @param {number} month target month
+   * @return {Promise}
+   */
+  fetch(year, month) {
+    const opts = {region: this.region};
+    if (this.accessKeyId) {
+      opts.accessKeyId = this.accessKeyId;
+    }
+    if (this.secretAccessKey) {
+      opts.secretAccessKey = this.secretAccessKey;
+    }
+    const s3 = new AWS.S3(opts);
+    const key = `${this.account}-aws-billing-csv-${year}-${pad(month)}.csv`;
+    return new Promise((resolve, reject) =&gt; {
+      s3.getObject({
+        Bucket: this.bucket,
+        Key: key
+      }, (err, data) =&gt; {
+        if (err) {
+          reject(err);
+        } else {
+          const report = new Report();
+          csv.fromString(data.Body.toString(&apos;utf8&apos;), {headers: true})
+            .on(&apos;data&apos;, row =&gt; {
+              report.update(new Record(row));
+            })
+            .on(&apos;end&apos;, () =&gt; resolve(report))
+            .on(&apos;error&apos;, _err =&gt; reject(_err));
+        }
+      });
+    });
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.3)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>
