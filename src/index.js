@@ -44,6 +44,11 @@ class Bill {
     this.products = {};
   }
 
+  /**
+   * sorted products
+   *
+   * @return {Object[]}
+   */
   get sortedProducts() {
     return Object.keys(this.products).map(code => {
       return {
