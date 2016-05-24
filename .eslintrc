@@ -2,3 +2,5 @@ extends:
   - moqada
   - moqada/node
 parser: babel-eslint
+rules:
+  node/no-unsupported-features: 0
