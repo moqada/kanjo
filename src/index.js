@@ -153,7 +153,9 @@ export default class Kanjo {
    * @param {string|undefined} accessKeyId AWS Access key ID
    * @param {string|undefined} secretAccessKey AWS Secret Access key
    */
-  constructor({account, bucket, region, accessKeyId, secretAccessKey}) {
+  constructor({
+    account, bucket, region, accessKeyId, secretAccessKey
+  }) {
     this.account = account;
     this.bucket = bucket;
     this.region = region;
