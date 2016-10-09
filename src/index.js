@@ -53,8 +53,8 @@ class Bill {
     return Object.keys(this.products).map(code => {
       return {
         code,
-        shortCode: code.replace(/aws|amazon/i, ''),
-        cost: this.products[code]
+        cost: this.products[code],
+        shortCode: code.replace(/aws|amazon/i, '')
       };
     }).sort((a, b) => b.cost - a.cost);
   }
